@@ -4,25 +4,25 @@ import os
 import re
 import shutil
 import sys
-import winreg
 
-import wx
-
-import demor_wx
 import tf2dem
 
 
 def steam_path():
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam') as handle:
-            return winreg.QueryValueEx(handle, 'SteamPath')[0].replace('/', '\\')
-    except:
-        return None
+    if sys.platform == "win32":
+        import winreg
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam') as handle:
+                return winreg.QueryValueEx(handle, 'SteamPath')[0].replace('/', '\\')
+        except:
+            return None
+    elif sys.platform == "linux":
+        return os.path.join(os.environ["HOME"], ".local", "share", "Steam")
 
 def game_library(steam_path):
     vdf_pat = re.compile(r'^\s*"\d+"\s*".+"\s*')
     libs = [steam_path]
-    libinfo = os.path.join(steam_path, r'steamapps\libraryfolders.vdf')
+    libinfo = os.path.join(steam_path, 'steamapps', 'libraryfolders.vdf')
     try:
         with open(libinfo, 'r', encoding='utf-8') as f:
             for line in f:
@@ -35,16 +35,16 @@ def game_library(steam_path):
 
 def find_tf2(libs):
     for lib in libs:
-        find_acf = os.path.join(lib, r'steamapps\appmanifest_440.acf')
+        find_acf = os.path.join(lib, 'steamapps', 'appmanifest_440.acf')
         if os.path.isfile(find_acf):
-            tf_root = os.path.join(lib, r'steamapps\common\Team Fortress 2\tf')
+            tf_root = os.path.join(lib, 'steamapps', 'common', 'Team Fortress 2', 'tf')
             if os.path.isdir(tf_root):
                 return tf_root
     return None
 
 def last_replay(tf):
     file_pat = re.compile(r'replay_\d+\.dmx')
-    replay_dir = os.path.join(tf, r'replay\client\replays')
+    replay_dir = os.path.join(tf, 'replay','client','replays')
     if not os.path.exists(replay_dir):
         os.makedirs(replay_dir)
     replays = glob.glob(os.path.join(replay_dir, 'replay_*.dmx'))
@@ -55,7 +55,7 @@ def last_replay(tf):
     return max(replays)
 
 def write_replay(tf, rid, dem, title, overwrite=False):
-    replay_dir = os.path.join(tf, r'replay\client\replays')
+    replay_dir = os.path.join(tf, 'replay','client','replays')
     if not os.path.exists(replay_dir):
         os.makedirs(replay_dir)
     replay_dmx = os.path.join(replay_dir, 'replay_{}.dmx'.format(rid))
@@ -75,7 +75,7 @@ def write_replay(tf, rid, dem, title, overwrite=False):
         f.write(dmx)
 
 def copy_dem(tf, dem, overwrite=False):
-    replay_dir = os.path.join(tf, r'replay\client\replays')
+    replay_dir = os.path.join(tf, 'replay','client','replays')
     if not os.path.exists(replay_dir):
         os.makedirs(replay_dir)
     src = os.path.normpath(dem.file_name)
@@ -130,6 +130,8 @@ if __name__ == '__main__':
     if 'cli' in sys.argv[1:]:
         cli_main()
     else:
+        import wx
+        import demor_wx
         app = wx.App(False)
         frame = demor_wx.Demor(None)
         icon = wx.Icon()
